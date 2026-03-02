@@ -1,0 +1,5 @@
+{
+  "name": "Transcrybe AI",
+  "description": "An AI Transcription Chatbot that allows users to paste cloud storage media links or upload files and receive a transcript with summaries.",
+  "requestFramePermissions": ["microphone"]
+}
