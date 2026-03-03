@@ -1,5 +1,5 @@
 {
-  "name": "Transcrybe AI",
-  "description": "An AI Transcription Chatbot that allows users to paste cloud storage media links or upload files and receive a transcript with summaries.",
+  "name": "TranscrybeAI",
+  "description": "AI-powered transcription chatbot — paste any cloud media link (Google Drive, Dropbox, OneDrive) and get an enhanced transcript with timestamps, speaker labels, and summaries.",
   "requestFramePermissions": ["microphone"]
 }

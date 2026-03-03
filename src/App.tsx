@@ -14,6 +14,7 @@ import {
   Mic,
   Square,
 } from "lucide-react";
+import { endpoints } from "./services/api";
 
 type Message = {
   id: string;
@@ -28,14 +29,24 @@ type Message = {
 };
 
 export default function App() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      type: "bot",
-      content:
-        "Hello! I am your All-Link AI Transcription Assistant. Paste a link from Google Drive, Dropbox, or OneDrive, or upload an audio/video file to get started.",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = localStorage.getItem("transcrybe_messages");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse saved messages", e);
+      }
+    }
+    return [
+      {
+        id: "welcome",
+        type: "bot",
+        content:
+          "Hello! I am your AI Transcription Assistant. Paste a link from Google Drive, Dropbox, or OneDrive, upload a file, or just ask me a question!",
+      },
+    ];
+  });
   const [inputValue, setInputValue] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -59,19 +70,32 @@ export default function App() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    localStorage.setItem("transcrybe_messages", JSON.stringify(messages));
   }, [messages]);
 
-  const handleSendLink = async () => {
+  const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
-    const link = inputValue.trim();
+    const text = inputValue.trim();
     setInputValue("");
 
     const userMsgId = Date.now().toString();
-    setMessages((prev) => [
-      ...prev,
-      { id: userMsgId, type: "user", content: link },
-    ]);
+    const newMessages: Message[] = [
+      ...messages,
+      { id: userMsgId, type: "user", content: text },
+    ];
+    setMessages(newMessages);
+
+    // Detect cloud media links (Google Drive, Dropbox, OneDrive, or any http(s) URL)
+    const cloudPatterns = [
+      /drive\.google\.com/i,
+      /dropbox\.com/i,
+      /1drv\.ms/i,
+      /sharepoint\.com/i,
+      /onedrive\.live\.com/i,
+    ];
+    const looksLikeUrl = /^https?:\/\/.+/i.test(text);
+    const isLink = looksLikeUrl || cloudPatterns.some((p) => p.test(text));
 
     const botMsgId = (Date.now() + 1).toString();
     setMessages((prev) => [
@@ -79,34 +103,65 @@ export default function App() {
       {
         id: botMsgId,
         type: "bot",
-        content: "Analyzing link...",
+        content: isLink ? "Analyzing link..." : "Thinking...",
         status: "pending",
       },
     ]);
 
-    try {
-      const res = await fetch("/api/transcribe/link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ link }),
-      });
-      const data = await res.json();
+    if (isLink) {
+      // Transcription Flow
+      try {
+        const res = await fetch(endpoints.transcribeLink, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ link: text }),
+        });
+        const data = await res.json();
 
-      if (data.jobId && socket) {
-        listenToJob(data.jobId, botMsgId);
-      } else {
+        if (data.jobId && socket) {
+          listenToJob(data.jobId, botMsgId);
+        } else {
+          updateMessage(botMsgId, {
+            status: "failed",
+            content: "Failed to start job.",
+            error: data.error || "Unknown error",
+          });
+        }
+      } catch (error: any) {
         updateMessage(botMsgId, {
           status: "failed",
-          content: "Failed to start job.",
-          error: data.error || "Unknown error",
+          content: "Failed to connect to server.",
+          error: error.message,
         });
       }
-    } catch (error: any) {
-      updateMessage(botMsgId, {
-        status: "failed",
-        content: "Failed to connect to server.",
-        error: error.message,
-      });
+    } else {
+      // Chat Flow
+      try {
+        // Build history for the backend
+        const chatHistory = newMessages.map(msg => ({
+          role: msg.type === "bot" ? "model" : "user",
+          content: msg.content
+        })).filter(msg => msg.content && !msg.content.includes("Thinking..."));
+
+        const res = await fetch(endpoints.chat, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: chatHistory }),
+        });
+        
+        const data = await res.json();
+        
+        updateMessage(botMsgId, {
+          status: "completed",
+          content: data.response || "No response generated.",
+        });
+      } catch (error: any) {
+        updateMessage(botMsgId, {
+          status: "failed",
+          content: "Chat request failed.",
+          error: error.message,
+        });
+      }
     }
   };
 
@@ -135,7 +190,7 @@ export default function App() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("/api/transcribe/file", {
+      const res = await fetch(endpoints.transcribeFile, {
         method: "POST",
         body: formData,
       });
@@ -201,7 +256,7 @@ export default function App() {
         formData.append("file", file);
 
         try {
-          const res = await fetch("/api/transcribe/file", {
+          const res = await fetch(endpoints.transcribeFile, {
             method: "POST",
             body: formData,
           });
@@ -288,7 +343,7 @@ export default function App() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSendLink();
+      handleSendMessage();
     }
   };
 
@@ -352,12 +407,21 @@ export default function App() {
             <FileAudio className="w-5 h-5 text-white" />
           </div>
           <h1 className="text-xl font-semibold tracking-tight">
-            Transcribe AI
+            TranscrybeAI
           </h1>
         </div>
-        <div className="text-sm text-zinc-500 font-medium">
-          Powered by Gemini
-        </div>
+        <button 
+          onClick={() => {
+            if (window.confirm("Are you sure you want to clear the chat history?")) {
+              localStorage.removeItem("transcrybe_messages");
+              window.location.reload();
+            }
+          }}
+          className="text-xs text-zinc-500 hover:text-red-500 transition-colors"
+        >
+          Clear Chat
+        </button>
+     
       </header>
 
       {/* Chat Area */}
@@ -501,7 +565,7 @@ export default function App() {
             />
           </div>
           <button
-            onClick={handleSendLink}
+            onClick={handleSendMessage}
             disabled={!inputValue.trim()}
             className="p-3 bg-zinc-900 text-white rounded-xl hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
           >
