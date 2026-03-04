@@ -20,6 +20,7 @@ jobs: dict = {}
 
 class LinkRequest(BaseModel):
     link: str
+    access_token: str = ""
 
 
 @router.get("/status/{job_id}")
@@ -31,7 +32,7 @@ async def get_job_status(job_id: str):
     return job
 
 
-async def process_media(job_id: str, link: str = None, file_path: str = None):
+async def process_media(job_id: str, link: str = None, file_path: str = None, access_token: str = ""):
     local_file_path = file_path
 
     try:
@@ -39,7 +40,7 @@ async def process_media(job_id: str, link: str = None, file_path: str = None):
 
         if link:
             # Detect provider, download securely
-            local_file_path = await process_cloud_link(link, sio, job_id)
+            local_file_path = await process_cloud_link(link, sio, job_id, access_token=access_token)
 
         if not local_file_path:
             raise Exception("No file to process")
@@ -80,7 +81,7 @@ async def transcribe_link(request: LinkRequest, background_tasks: BackgroundTask
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "pending", "type": "link", "link": link}
 
-    background_tasks.add_task(process_media, job_id, link=link)
+    background_tasks.add_task(process_media, job_id, link=link, access_token=request.access_token or "")
 
     return {"jobId": job_id}
 
@@ -106,6 +107,4 @@ async def transcribe_file(file: UploadFile = File(...), background_tasks: Backgr
 
     background_tasks.add_task(process_media, job_id, file_path=file_path)
 
-    return {"jobId": job_id}
-    
     return {"jobId": job_id}

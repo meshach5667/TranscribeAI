@@ -16,17 +16,29 @@ llm = ChatGoogleGenerativeAI(
 
 summary_template = PromptTemplate(
     input_variables=["transcript"],
-    template="""
+    template="""You are a professional transcription analyst.
+
 Here is a transcript of an audio/video file:
 
 {transcript}
 
-Please process this transcript and provide a structured JSON-like text response with the following sections cleanly formatted:
-1. **Summary**: A concise 2-3 sentence summary of the entire content.
-2. **Highlights**: Key bullet points or highlights.
-3. **Action Items**: Any action items identified.
+Analyse the transcript and respond with **plain formatted text** (NOT JSON, NOT markdown code blocks). Use this exact structure:
+
+SUMMARY
+Write a concise 2-3 sentence summary of the content.
+
+HIGHLIGHTS
+• First key point or highlight
+• Second key point
+• (add more as needed)
+
+ACTION ITEMS
+• First action item identified
+• Second action item
+• (write "None identified" if there are no action items)
 
 Do your best to infer timestamps or speaker shifts logically even if the raw transcript lacks them.
+Respond ONLY with the plain text above — no JSON, no code fences, no extra commentary.
 """
 )
 

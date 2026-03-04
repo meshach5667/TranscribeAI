@@ -9,7 +9,10 @@ router = APIRouter()
 SYSTEM_INSTRUCTION = (
     "You are TranscrybeAI, a highly intelligent transcription and extraction assistant. "
     "You help users summarize, extract, and understand their audio/video transcripts. "
-    "You can also engage in normal helpful conversation."
+    "You can also engage in normal helpful conversation. "
+    "IMPORTANT: Always respond in plain, human-readable text. "
+    "NEVER output JSON, code blocks, or markdown fences. "
+    "Use headings, bullet points (•), and paragraphs for structure."
 )
 
 
@@ -37,13 +40,25 @@ async def process_chat(request: ChatRequest):
     try:
         client = _get_client()
 
-        contents = []
+        raw = []
         for msg in request.messages:
             role = "user" if msg.role == "user" else "model"
-            contents.append({
-                "role": role,
-                "parts": [{"text": msg.content}],
-            })
+            raw.append({"role": role, "text": msg.content})
+
+        # Drop leading model messages
+        while raw and raw[0]["role"] != "user":
+            raw.pop(0)
+
+        if not raw:
+            raise HTTPException(status_code=400, detail="No user message found")
+
+        # Collapse consecutive same-role messages
+        contents = []
+        for item in raw:
+            if contents and contents[-1]["role"] == item["role"]:
+                contents[-1]["parts"].append({"text": item["text"]})
+            else:
+                contents.append({"role": item["role"], "parts": [{"text": item["text"]}]})
 
         response = client.models.generate_content(
             model="gemini-2.5-flash",
@@ -51,7 +66,14 @@ async def process_chat(request: ChatRequest):
             config=dict(system_instruction=SYSTEM_INSTRUCTION),
         )
 
-        return {"response": response.text}
+        text = (response.text or "").strip()
+
+        # Strip accidental markdown code fences if model still wraps in ```json ... ```
+        import re
+        text = re.sub(r'^```(?:json|text)?\s*\n?', '', text)
+        text = re.sub(r'\n?```\s*$', '', text)
+
+        return {"response": text}
 
     except Exception as error:
         print(f"Chat error: {error}")

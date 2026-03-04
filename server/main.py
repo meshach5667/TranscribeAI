@@ -29,10 +29,11 @@ async def health_check():
 
 
 # Import routers *after* app is created to avoid circular imports
-from server.routes import transcribe, chat  # noqa: E402
+from server.routes import transcribe, chat, auth  # noqa: E402
 
 fastapi_app.include_router(transcribe.router, prefix="/api/transcribe", tags=["transcribe"])
 fastapi_app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
+fastapi_app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
 # Import the shared sio instance and wrap FastAPI with Socket.IO
 from server.socket_manager import sio  # noqa: E402
