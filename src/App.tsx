@@ -17,6 +17,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { endpoints } from "./services/api";
+import PrivacyPage from "./pages/Privacy";
+import TermsPage from "./pages/Terms";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -239,6 +241,10 @@ function WelcomePage({
           We use your Google account to access private Drive files on your
           behalf. No data is stored on our servers.
         </p>
+        <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-secondary)" }}>
+          <a href="/privacy" style={{ marginRight: 12, color: "var(--accent)" }}>Privacy Policy</a>
+          <a href="/terms" style={{ color: "var(--accent)" }}>Terms of Service</a>
+        </div>
       </motion.div>
     </div>
   );
@@ -248,6 +254,9 @@ function WelcomePage({
 /*  Main App                                                           */
 /* ------------------------------------------------------------------ */
 export default function App() {
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
+  if (pathname === "/privacy") return <PrivacyPage />;
+  if (pathname === "/terms") return <TermsPage />;
   /* ---- Theme ---- */
   const [theme, setTheme] = useState(
     () => localStorage.getItem("transcrybe_theme") || "light",
