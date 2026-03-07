@@ -54,10 +54,7 @@ export default function PrivacyPage() {
         Developer contact email: <a href="mailto:meshachzakumi@gmail.com">meshachzakumi@gmail.com</a>
       </p>
 
-      <p>
-        For verification: include this Privacy Policy URL in your OAuth consent
-        screen and ensure the domain is verified in Google Search Console.
-      </p>
+     
     </div>
   );
 }
