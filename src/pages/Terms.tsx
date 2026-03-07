@@ -29,10 +29,10 @@ export default function TermsPage() {
 
       <h2>Contact</h2>
       <p>
-        Developer contact email: <a href="mailto:support@transcrybeai.example">support@transcrybeai.example</a>
+        Developer contact email: <a href="mailto:meshachzakumi@gmail.com">support@transcrybeai.example</a>
       </p>
 
-      <p>Host these pages on a verified domain and add their URLs to the OAuth consent screen form.</p>
+     
     </div>
   );
 }
