@@ -29,7 +29,7 @@ export default function TermsPage() {
 
       <h2>Contact</h2>
       <p>
-        Developer contact email: <a href="mailto:meshachzakumi@gmail.com">support@transcrybeai.example</a>
+        Developer contact email: <a href="mailto:meshachzakumi@gmail.com">meshachzakumi@gmail.com</a>
       </p>
 
      
